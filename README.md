@@ -53,7 +53,7 @@ Rust で書かれており、主に次のライブラリを使っています。
 
 **macOS(Apple Silicon)**
 
-`KoeBoard-macos-arm64.zip` を展開し、`KoeBoard.app` を `/Applications` などに置いて起動します。開発元を確認できないという警告で開けない場合は、システム設定 → プライバシーとセキュリティ の「このまま開く」から起動してください。
+`KoeBoard-macos-arm64.dmg` を開き、`KoeBoard.app` を `Applications` フォルダにドラッグして起動します。
 
 初回に次の 2 つの権限を許可してください。
 

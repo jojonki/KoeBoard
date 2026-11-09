@@ -29,7 +29,13 @@ cat > "$app/Contents/Info.plist" <<PLIST
 PLIST
 # macOS keys privacy grants to the requirement below. The default ad-hoc requirement
 # is the build's hash, which would drop Accessibility access on every rebuild.
-codesign --force --sign - -r='designated => identifier "dev.koeboard.dictation"' "$app"
+# Release builds set CODESIGN_IDENTITY; see scripts/release-macos.sh.
+if [ -n "${CODESIGN_IDENTITY:-}" ]; then
+  codesign --force --options runtime --timestamp \
+    --entitlements scripts/KoeBoard.entitlements --sign "$CODESIGN_IDENTITY" "$app"
+else
+  codesign --force --sign - -r='designated => identifier "dev.koeboard.dictation"' "$app"
+fi
 # The in-app updater looks for exactly this asset name on the release.
 case "$(uname -m)" in arm64) arch=arm64 ;; *) arch=x64 ;; esac
 zip="dist/KoeBoard-macos-$arch.zip"
