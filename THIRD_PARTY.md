@@ -41,8 +41,6 @@ conversion/fla_cpu_shim.py reimplements decode-time kernels of flash-linear-atte
 This conversion is unofficial and is not endorsed by Third Intelligence.
 ```
 
-新しいモデルを `src/models.rs` に追加するときは、変換版の表記ではなく、重みの原本のライセンスを確認してください。
-
 ## 主なランタイム依存
 
 | 依存 | ライセンス |
