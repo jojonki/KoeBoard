@@ -1,7 +1,7 @@
 //! Tabbed settings window, created on demand so the resident app stays light.
 
 use crate::config::{Config, PanelStyle};
-use crate::{audio, models};
+use crate::{audio, models, updater};
 use serde::Deserialize;
 use std::path::Path;
 use tao::dpi::LogicalSize;
@@ -10,6 +10,7 @@ use tao::window::{Window, WindowBuilder, WindowId};
 use wry::{WebView, WebViewBuilder};
 
 const PAGE: &str = include_str!("settings.html");
+pub const CHANGELOG: &str = include_str!("../CHANGELOG.md");
 
 #[derive(Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -19,8 +20,17 @@ pub enum Message {
     OpenConfig,
     OpenLog,
     OpenUrl { url: String },
+    CheckUpdates,
+    InstallUpdate,
     Download { id: String, accepted: bool },
     Delete { id: String },
+}
+
+/// Which tab a new window starts on, and whether to greet the user.
+#[derive(Default)]
+pub struct Landing {
+    pub tab: Option<&'static str>,
+    pub welcome: Option<&'static str>,
 }
 
 pub struct Settings {
@@ -36,6 +46,8 @@ impl Settings {
         config: &Config,
         launch_at_login: Option<bool>,
         status: &str,
+        landing: Landing,
+        update: &serde_json::Value,
         on_message: impl Fn(String) + 'static,
     ) -> Result<Self, String> {
         let previous_app = platform::frontmost_app();
@@ -78,6 +90,11 @@ impl Settings {
             "launchAtLogin": launch_at_login,
             "status": status,
             "panelDefaults": PanelStyle::default(),
+            "version": updater::VERSION,
+            "changelog": CHANGELOG,
+            "tab": landing.tab,
+            "welcome": landing.welcome,
+            "update": update,
         });
 
         let webview = WebViewBuilder::new()
@@ -104,6 +121,14 @@ impl Settings {
     /// Brings the user to the download step if dictation cannot run yet.
     pub fn require_model(&self) {
         let _ = self.webview.evaluate_script("window.koeboardRequireModel()");
+    }
+
+    pub fn select_tab(&self, tab: &str) {
+        self.call("koeboardSelectTab", tab);
+    }
+
+    pub fn push_update(&self, view: &serde_json::Value) {
+        let _ = self.webview.evaluate_script(&format!("window.koeboardUpdate({view})"));
     }
 
     pub fn push_status(&self, text: &str) {

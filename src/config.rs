@@ -35,6 +35,8 @@ pub struct Config {
     pub panel: PanelStyle,
     /// Models whose license the user accepted before downloading.
     pub accepted_licenses: Vec<String>,
+    /// Looks for a new release about once a day.
+    pub auto_update: bool,
 }
 
 /// Appearance of the overlay panel. Re-read at the start of every recording.
@@ -119,6 +121,7 @@ impl Default for Config {
             overlay: true,
             panel: PanelStyle::default(),
             accepted_licenses: Vec::new(),
+            auto_update: true,
         }
     }
 }

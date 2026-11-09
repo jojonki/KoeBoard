@@ -74,6 +74,15 @@ button.btn:disabled { opacity: .5; }
 #setup { background: var(--tint); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
 #setup strong { display: block; font-size: 14px; margin-bottom: 2px; }
 #setup[hidden] { display: none; }
+#welcome { background: var(--tint); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+#welcome strong { display: block; font-size: 14px; margin-bottom: 2px; }
+#welcome[hidden] { display: none; }
+#welcome .btn { margin-top: 8px; }
+.notes { padding: 10px 14px; user-select: text; -webkit-user-select: text; overflow-wrap: anywhere; }
+.notes h3 { font-size: 13px; margin: 12px 0 4px; }
+.notes h3:first-child { margin-top: 0; }
+.notes ul { margin: 0; padding-left: 18px; }
+.notes p { margin: 0 0 4px; }
 </style>
 </head>
 <body>
@@ -82,6 +91,7 @@ button.btn:disabled { opacity: .5; }
   <button role="tab" data-tab="general">General</button>
   <button role="tab" data-tab="model">Model</button>
   <button role="tab" data-tab="layout">Layout</button>
+  <button role="tab" data-tab="updates">Updates</button>
   <div id="status" aria-live="polite"></div>
 </nav>
 <main>
@@ -141,6 +151,10 @@ button.btn:disabled { opacity: .5; }
 <section id="layout" hidden>
   <h2>Preview</h2>
   <div class="group"><div class="stage"><div id="mock"></div></div></div>
+  <h2>Text</h2>
+  <div class="group">
+    <div class="row"><label>Dictated text size<small>Shows a sample on screen as you drag</small></label><div class="ctl"><input type="range" min="9" max="48" data-key="panel.text_size"><span class="val"></span></div></div>
+  </div>
   <h2>Position</h2>
   <div class="group">
     <div class="row"><div class="name">Screen position</div><div class="ctl"><div class="seg" id="pos">
@@ -154,7 +168,6 @@ button.btn:disabled { opacity: .5; }
     <div class="row"><label>Width</label><div class="ctl"><input type="range" min="60" max="600" step="2" data-key="panel.width"><span class="val"></span></div></div>
     <div class="row"><label>Height</label><div class="ctl"><input type="range" min="16" max="80" data-key="panel.height"><span class="val"></span></div></div>
     <div class="row"><label>Maximum text width</label><div class="ctl"><input type="range" min="100" max="1400" step="4" data-key="panel.max_text_width"><span class="val"></span></div></div>
-    <div class="row"><label>Text size</label><div class="ctl"><input type="range" min="9" max="32" data-key="panel.text_size"><span class="val"></span></div></div>
   </div>
   <h2>Appearance</h2>
   <div class="group">
@@ -170,6 +183,22 @@ button.btn:disabled { opacity: .5; }
     <button class="btn" id="reset" type="button">Reset to defaults</button>
     <button class="btn" id="preview" type="button">Show on screen</button>
   </div>
+</section>
+
+<section id="updates" hidden>
+  <div id="welcome" hidden><strong id="welcomeTitle"></strong><span id="welcomeText"></span>
+    <div><button class="btn" id="welcomeSetup" type="button" hidden>Download a speech model</button></div></div>
+  <h2>Software update</h2>
+  <div class="group">
+    <div class="row"><div class="name">KoeBoard <span id="version"></span><small id="updateText" aria-live="polite"></small></div>
+      <div class="ctl"><button class="btn" id="installUpdate" type="button" hidden>Install &amp; Restart</button>
+        <button class="btn" id="checkUpdates" type="button">Check Now</button></div></div>
+    <div class="row"><label for="au">Check for updates automatically<small>Asks GitHub about once a day. Your audio and text are never sent</small></label>
+      <div class="ctl"><input id="au" type="checkbox" data-key="auto_update"></div></div>
+  </div>
+  <div id="newNotes" hidden><h2 id="newNotesTitle"></h2><div class="group notes" id="newNotesBody"></div></div>
+  <h2>Release notes</h2>
+  <div class="group notes" id="changelog"></div>
 </section>
 <div id="error" role="alert"></div>
 </main>
@@ -323,7 +352,8 @@ const modelMissing = () => !init.models.find(m => m.id === config.model)?.instal
 function renderSetup() {
   const setup = !init.models.some(m => m.installed);
   $("#setup").hidden = !setup;
-  for (const b of $$("nav button")) b.hidden = setup && b.dataset.tab !== "model";
+  for (const b of $$("nav button")) b.hidden = setup && !["model", "updates"].includes(b.dataset.tab);
+  $("#welcomeSetup").hidden = !modelMissing();
 }
 function link(text, url) {
   const b = document.createElement("button");
@@ -454,11 +484,72 @@ window.koeboardRequireModel = () => {
 };
 window.koeboardError = text => { $("#error").textContent = text; };
 
+// Release notes come from GitHub, so they are only ever inserted as text.
+function renderNotes(box, markdown) {
+  box.textContent = "";
+  let list = null;
+  for (const raw of markdown.split(/\r?\n/)) {
+    const line = raw.trim();
+    const bullet = /^[-*] +(.*)/.exec(line);
+    if (bullet) {
+      if (!list) { list = document.createElement("ul"); box.append(list); }
+      const item = document.createElement("li");
+      item.textContent = bullet[1];
+      list.append(item);
+      continue;
+    }
+    list = null;
+    if (!line || /^# /.test(line)) continue;
+    const heading = /^#{2,} +(.*)/.exec(line);
+    const el = document.createElement(heading ? "h3" : "p");
+    el.textContent = heading ? heading[1] : line;
+    box.append(el);
+  }
+}
+window.koeboardUpdate = u => {
+  const busy = ["checking", "downloading", "installing"].includes(u.state);
+  const texts = {
+    idle: "",
+    checking: "Checking for updates…",
+    current: "You're up to date.",
+    available: `Version ${u.version} is available.`,
+    downloading: `Downloading… ${u.percent}%`,
+    installing: "Installing and restarting…",
+    failed: u.message,
+  };
+  $("#updateText").textContent = texts[u.state];
+  $("#checkUpdates").disabled = busy;
+  $("#installUpdate").hidden = !u.version;
+  $("#installUpdate").disabled = busy;
+  $("#newNotes").hidden = !u.version || !u.notes;
+  if (u.version) {
+    $("#newNotesTitle").textContent = `What's new in ${u.version}`;
+    renderNotes($("#newNotesBody"), u.notes || "");
+  }
+};
+window.koeboardSelectTab = selectTab;
+$("#checkUpdates").addEventListener("click", () => send({ type: "check_updates" }));
+$("#installUpdate").addEventListener("click", () => send({ type: "install_update" }));
+$("#version").textContent = init.version;
+renderNotes($("#changelog"), init.changelog);
+if (init.welcome) {
+  $("#welcome").hidden = false;
+  $("#welcomeTitle").textContent = init.welcome === "updated"
+    ? `KoeBoard was updated to ${init.version}` : "KoeBoard is running";
+  const where = navigator.platform.startsWith("Win") ? "system tray" : "menu bar";
+  $("#welcomeText").textContent = `It stays in the ${where}. Press ${prettyKey(config.hotkey)} to dictate.`;
+}
+$("#welcomeSetup").addEventListener("click", () => {
+  selectTab("model");
+  window.koeboardRequireModel();
+});
+
 window.koeboardStatus(init.status);
-selectTab("general");
+window.koeboardUpdate(init.update);
+selectTab(init.tab || "general");
 renderModels();
 render();
-window.koeboardRequireModel();
+if (!init.tab) window.koeboardRequireModel();
 </script>
 </body>
 </html>

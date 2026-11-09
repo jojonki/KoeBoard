@@ -9,6 +9,7 @@ mod inject;
 mod models;
 mod overlay;
 mod settings;
+mod updater;
 
 use std::fs::OpenOptions;
 use std::io::Write;

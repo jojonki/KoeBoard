@@ -1,6 +1,18 @@
-# KoeBoard
+<p align="center">
+  <img src="assets/icons/app-icon.png" alt="KoeBoard のアイコン" width="128">
+</p>
 
-macOS / Windows に常駐する、ローカル完結の日本語音声入力アプリです。ホットキーを押して話すと、フォーカス中のテキスト欄に文字が入ります。GPU は不要で、音声は端末の外へ送信されません。
+<h1 align="center">KoeBoard</h1>
+
+<p align="center">
+  macOS / Windows に常駐する、ローカル完結の日本語音声入力アプリ
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" alt="ホットキーを押して話し、離すと認識結果がフォーカス中のテキスト欄に入力される様子" width="640">
+</p>
+
+ホットキーを押して話すと、フォーカス中のテキスト欄に文字が入ります。GPU は不要で、音声は端末の外へ送信されません。
 
 ## 使い方
 
@@ -9,6 +21,45 @@ macOS / Windows に常駐する、ローカル完結の日本語音声入力ア�
 | ホットキーを押している間だけ話し、離す | 録音して入力 |
 
 既定のホットキーは `Ctrl+Shift+K` です。録音中は画面下部に小さなパネルが出て、声の大きさに合わせて波形が動きます。認識が終わると結果の全文を折り返して表示し、元のテキスト欄に貼り付けます。パネルはフォーカスを奪いません。トレイのマイクアイコンは、録音中が赤、認識中が橙になります。
+
+## アーキテクチャ
+
+音声認識を含む入力の処理はすべて端末内で完結し、クラウドの音声認識 API やサーバーは使いません。インターネットに接続するのは、モデルのダウンロードとアプリの更新のときだけです。どちらも取得のみで、音声や認識結果は送信しません。
+
+```mermaid
+flowchart TB
+    subgraph device["端末内 (macOS / Windows)"]
+        direction LR
+        hotkey["ホットキー<br/>global-hotkey"] -->|"押す / 離す"| audio["録音<br/>cpal"]
+        audio -->|音声データ| engine["音声認識<br/>sherpa-onnx (CPU)"]
+        engine -->|テキスト| inject["貼り付け<br/>クリップボード + 貼り付けキー"]
+        inject --> target["フォーカス中の<br/>テキスト欄"]
+        models[("音声認識モデル<br/>ONNX")] --> engine
+        audio -.->|入力レベル| overlay["パネル<br/>波形・認識結果"]
+        engine -.->|認識結果| overlay
+        updater["アップデーター"]
+    end
+
+    subgraph internet["インターネット (取得のみ・音声は送信しない)"]
+        direction LR
+        hf["Hugging Face<br/>モデルの配布元"]
+        github["GitHub Releases<br/>アプリの配布元"]
+    end
+
+    hf -->|"ライセンス確認後にダウンロード<br/>SHA-256 で検証"| models
+    github -->|"更新の確認 (1 日 1 回)<br/>新版のダウンロード"| updater
+```
+
+| モジュール | 役割 |
+|---|---|
+| `src/app.rs` / `src/gesture.rs` | イベントループ、トレイ、ホットキーの押下と解放の判定 |
+| `src/audio.rs` | マイクからの録音と、認識前の音声の下処理 |
+| `src/engine.rs` | モデルの読み込みと解放、音声認識(専用のワーカースレッドで実行) |
+| `src/inject.rs` | クリップボード経由の貼り付けと、クリップボードの復元 |
+| `src/overlay.rs` | フォーカスを奪わない録音・結果パネル |
+| `src/settings.rs` / `src/settings.html` | WebView の設定画面 |
+| `src/models.rs` | モデルの一覧、ダウンロード、ハッシュ検証 |
+| `src/updater.rs` | GitHub Releases からの自己更新 |
 
 ## ビルド
 
@@ -55,7 +106,7 @@ rustup target add x86_64-pc-windows-gnu
 
 ## 設定
 
-トレイの **Settings...** から、タブ付きの設定画面(General / Model / Layout)で変更できます。ほとんどの項目はすぐに反映されます。設定は次のファイルに保存され、直接編集もできます。場所は macOS が `~/Library/Application Support/KoeBoard/config.toml`、Windows が `%APPDATA%\KoeBoard\config.toml` です。
+トレイの **Settings...** から、タブ付きの設定画面(General / Model / Layout / Updates)で変更できます。ほとんどの項目はすぐに反映されます。設定は次のファイルに保存され、直接編集もできます。場所は macOS が `~/Library/Application Support/KoeBoard/config.toml`、Windows が `%APPDATA%\KoeBoard\config.toml` です。
 
 | キー | 既定 | 説明 |
 |---|---|---|
@@ -88,6 +139,12 @@ rustup target add x86_64-pc-windows-gnu
 | `level_color` / `level_color_end` | `#6FE3FF` / `#B69CFF` | 録音中の波形のグラデーション。設定画面の Layout タブでプリセットからも選べます |
 | `busy_color` | `#9AA0B5` | 認識中のインジケーターの色 |
 | `text_color` | `#F2F2F7` | 文字の色 |
+
+## アップデート
+
+GitHub Releases の最新版を1日1回ほど確認し(通信先は GitHub のみで、音声や認識テキストは送りません)、新しい版があるとトレイメニューとパネルでお知らせします。設定画面の **Updates** タブ、またはトレイの **Check for Updates...** からインストールできます。自動確認は同じタブ、または `config.toml` の `auto_update` でオフにできます。macOS では `KoeBoard.app` を書き込み可能な場所(`/Applications` など)に置いてください。
+
+新しいバージョンを初めて起動したときは、リリースノート(`CHANGELOG.md`)を載せた設定画面が開きます。
 
 ## 診断
 

@@ -4,11 +4,12 @@ set -eu
 cd "$(dirname "$0")/.."
 cargo build --release
 app=dist/KoeBoard.app
+version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp assets/icons/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp target/release/koeboard "$app/Contents/MacOS/koeboard"
-cat > "$app/Contents/Info.plist" <<'PLIST'
+cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -18,8 +19,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key><string>koeboard</string>
   <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1.0</string>
-  <key>CFBundleVersion</key><string>1</string>
+  <key>CFBundleShortVersionString</key><string>$version</string>
+  <key>CFBundleVersion</key><string>$version</string>
   <key>LSMinimumSystemVersion</key><string>13.0</string>
   <key>LSUIElement</key><true/>
   <key>NSMicrophoneUsageDescription</key><string>KoeBoard uses the microphone for dictation. Audio never leaves this device.</string>
@@ -29,4 +30,10 @@ PLIST
 # macOS keys privacy grants to the requirement below. The default ad-hoc requirement
 # is the build's hash, which would drop Accessibility access on every rebuild.
 codesign --force --sign - -r='designated => identifier "dev.koeboard.dictation"' "$app"
+# The in-app updater looks for exactly this asset name on the release.
+case "$(uname -m)" in arm64) arch=arm64 ;; *) arch=x64 ;; esac
+zip="dist/KoeBoard-macos-$arch.zip"
+rm -f "$zip"
+ditto -c -k --keepParent "$app" "$zip"
 echo "$app"
+echo "$zip"

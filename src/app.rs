@@ -5,7 +5,8 @@ use crate::config::{self, Config};
 use crate::engine::{Job, Status, Worker};
 use crate::gesture::{Action, Gesture};
 use crate::overlay::{Level, Overlay};
-use crate::settings::{Message, Settings};
+use crate::settings::{Landing, Message, Settings};
+use crate::updater::{self, Updater};
 use crate::{inject, log, models};
 use auto_launch::{AutoLaunch, AutoLaunchBuilder, MacOSLaunchMode};
 use global_hotkey::hotkey::HotKey;
@@ -25,6 +26,7 @@ enum UserEvent {
     Menu(MenuEvent),
     Status(Status),
     Settings(String),
+    Update(updater::Event),
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -103,6 +105,19 @@ pub fn run() -> Result<(), String> {
     std::thread::spawn(move || worker.run(jobs_rx));
     let _ = jobs.send(Job::Warm);
 
+    let updater = {
+        let p = proxy.clone();
+        Updater::new(root.clone(), move |e| {
+            let _ = p.send_event(UserEvent::Update(e));
+        })
+    };
+    let auto_update = Arc::new(AtomicBool::new(config.auto_update));
+    updater.run_periodic(auto_update.clone());
+    let mut welcome = updater::take_welcome(&root);
+    let mut settings_tab: Option<&'static str> = None;
+    let mut available: Option<updater::Update> = None;
+    let mut update_view = updater::idle_view();
+
     let mut gesture = Gesture::default();
     let mut max_record = Duration::from_secs(config.max_record_seconds);
     let mut settings: Option<Settings> = None;
@@ -129,7 +144,9 @@ pub fn run() -> Result<(), String> {
                     }
                 }
                 // Nothing is downloaded until the user accepts a model's license.
-                want_settings = !models::id_is_installed(&root, &config.model);
+                // A resident app gives no sign of life otherwise, so greet each new version.
+                want_settings = welcome.is_some() || !models::id_is_installed(&root, &config.model);
+                settings_tab = welcome.map(|_| "updates");
                 // Dictation still works without the panel.
                 match Overlay::new(target, overlay_level.clone(), config.panel.clone()) {
                     Ok(o) => overlay = Some(o),
@@ -191,6 +208,11 @@ pub fn run() -> Result<(), String> {
                         MenuOutcome::Quit => quit = true,
                         MenuOutcome::None => {}
                         MenuOutcome::Settings => want_settings = true,
+                        MenuOutcome::CheckUpdates => {
+                            want_settings = true;
+                            settings_tab = Some("updates");
+                            updater.check(true);
+                        }
                     }
                 }
                 None
@@ -200,6 +222,36 @@ pub fn run() -> Result<(), String> {
             {
                 if let Some(w) = settings.take() {
                     w.close();
+                }
+                None
+            }
+            Event::UserEvent(UserEvent::Update(e)) => {
+                match &e {
+                    updater::Event::Available(update) => {
+                        let is_new = available.as_ref().map(|a| &a.version) != Some(&update.version);
+                        available = Some(update.clone());
+                        if let Some(u) = ui.as_mut() {
+                            u.set_update_available(Some(&update.version));
+                        }
+                        // A window would steal focus from the text being dictated into.
+                        if is_new && config.overlay && record_deadline.is_none() && pending == 0 {
+                            if let Some(o) = overlay.as_mut() {
+                                o.result(format!("KoeBoard {} is available. Install it from the menu.", update.version), false);
+                            }
+                        }
+                    }
+                    updater::Event::UpToDate => {
+                        available = None;
+                        if let Some(u) = ui.as_mut() {
+                            u.set_update_available(None);
+                        }
+                    }
+                    updater::Event::Restart => quit = true,
+                    _ => {}
+                }
+                update_view = updater::view(&e, available.as_ref());
+                if let Some(w) = settings.as_ref() {
+                    w.push_update(&update_view);
                 }
                 None
             }
@@ -227,6 +279,12 @@ pub fn run() -> Result<(), String> {
                                 }
                             }
                             let _ = jobs.send(Job::Download(id));
+                        }
+                    }
+                    Ok(Message::CheckUpdates) => updater.check(true),
+                    Ok(Message::InstallUpdate) => {
+                        if let Some(update) = available.clone() {
+                            updater.install(update);
                         }
                     }
                     Ok(Message::Delete { id }) => {
@@ -258,6 +316,7 @@ pub fn run() -> Result<(), String> {
                             recorder.set_device(new.microphone.clone());
                         }
                         restore_clipboard.store(new.restore_clipboard, Ordering::Relaxed);
+                        auto_update.store(new.auto_update, Ordering::Relaxed);
                         if new.panel != config.panel {
                             if let Some(o) = overlay.as_mut() {
                                 o.set_style(new.panel.clone());
@@ -296,9 +355,13 @@ pub fn run() -> Result<(), String> {
         };
 
         if std::mem::take(&mut want_settings) {
+            let tab = settings_tab.take();
             if let Some(w) = settings.as_ref() {
                 w.focus();
-                w.require_model();
+                match tab {
+                    Some(t) => w.select_tab(t),
+                    None => w.require_model(),
+                }
             } else if let Some(u) = ui.as_ref() {
                 let p = proxy.clone();
                 let opened = Settings::open(
@@ -307,6 +370,8 @@ pub fn run() -> Result<(), String> {
                     &config,
                     u.launch_at_login(),
                     &u.status.text(),
+                    Landing { tab, welcome: welcome.take() },
+                    &update_view,
                     move |body| {
                         let _ = p.send_event(UserEvent::Settings(body));
                     },
@@ -410,16 +475,20 @@ pub fn overlay_demo() -> Result<(), String> {
     })
 }
 
+const CHECK_UPDATES_LABEL: &str = "Check for Updates...";
+
 enum MenuOutcome {
     None,
     Quit,
     Settings,
+    CheckUpdates,
 }
 
 struct Ui {
     tray: TrayIcon,
     status: MenuItem,
     settings: MenuItem,
+    updates: MenuItem,
     auto_launch: Option<AutoLaunch>,
     quit: MenuItem,
     light: Light,
@@ -436,6 +505,7 @@ impl Ui {
         let auto_launch = build_auto_launch();
         carry_over_launch_at_login(auto_launch.as_ref());
         let settings = MenuItem::new("Settings...", true, None);
+        let updates = MenuItem::new(CHECK_UPDATES_LABEL, true, None);
         let quit = MenuItem::new("Quit KoeBoard", true, None);
 
         let menu = Menu::new();
@@ -443,6 +513,7 @@ impl Ui {
             &status,
             &PredefinedMenuItem::separator(),
             &settings,
+            &updates,
             &PredefinedMenuItem::separator(),
             &quit,
         ])
@@ -465,6 +536,7 @@ impl Ui {
             tray,
             status,
             settings,
+            updates,
             auto_launch,
             quit,
             light: Light::Idle,
@@ -524,6 +596,8 @@ impl Ui {
             MenuOutcome::Quit
         } else if id == self.settings.id() {
             MenuOutcome::Settings
+        } else if id == self.updates.id() {
+            MenuOutcome::CheckUpdates
         } else {
             MenuOutcome::None
         }
@@ -540,6 +614,13 @@ impl Ui {
         }
         let Some(a) = &self.auto_launch else { return Ok(()) };
         if want { a.enable() } else { a.disable() }.map_err(|e| format!("Launch at login: {e}"))
+    }
+
+    fn set_update_available(&self, version: Option<&str>) {
+        match version {
+            Some(v) => self.updates.set_text(format!("Update to {v}...")),
+            None => self.updates.set_text(CHECK_UPDATES_LABEL),
+        }
     }
 
     fn set_hotkey_label(&mut self, hotkey: &str) {
