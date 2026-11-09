@@ -450,9 +450,9 @@ impl Ui {
 
         let icons = [
             // macOS recolors this template icon; the Windows taskbar is usually dark.
-            mic_icon(if cfg!(target_os = "macos") { [0, 0, 0] } else { [230, 230, 230] })?,
-            mic_icon([235, 60, 50])?,
-            mic_icon([240, 150, 30])?,
+            tray_icon(if cfg!(target_os = "macos") { [0, 0, 0] } else { [230, 230, 230] })?,
+            tray_icon([235, 60, 50])?,
+            tray_icon([240, 150, 30])?,
         ];
         let builder = TrayIconBuilder::new().with_menu(Box::new(menu)).with_tooltip("KoeBoard");
         #[cfg(target_os = "macos")]
@@ -595,36 +595,26 @@ fn open_path(path: &std::path::Path) {
     }
 }
 
-/// Draws a small microphone so no image assets are needed.
-fn mic_icon(rgb: [u8; 3]) -> Result<Icon, String> {
-    const N: usize = 44;
-    let mut px = vec![0u8; N * N * 4];
-    let inside = |x: f32, y: f32| {
-        // Capsule, cradle arc and stand, in a 44-unit box.
-        let dy = y - y.clamp(12.0, 21.0);
-        let capsule = (x * x + dy * dy).sqrt() <= 6.5;
-        let dy2 = y - 21.0;
-        let r = (x * x + dy2 * dy2).sqrt();
-        let arc = y >= 21.0 && (10.0..=12.5).contains(&r);
-        let stem = x.abs() <= 1.3 && (33.0..=38.0).contains(&y);
-        let base = x.abs() <= 7.0 && (37.0..=39.5).contains(&y);
-        capsule || arc || stem || base
-    };
-    for j in 0..N {
-        for i in 0..N {
-            // 4x supersampling for smooth edges.
-            let mut hits = 0u32;
-            for sy in 0..4 {
-                for sx in 0..4 {
-                    let x = i as f32 + (sx as f32 + 0.5) / 4.0 - 22.0;
-                    let y = j as f32 + (sy as f32 + 0.5) / 4.0;
-                    hits += inside(x, y) as u32;
-                }
-            }
-            let p = &mut px[(j * N + i) * 4..(j * N + i + 1) * 4];
-            p[..3].copy_from_slice(&rgb);
-            p[3] = (hits * 255 / 16) as u8;
-        }
+/// Decodes an embedded 8-bit RGBA PNG into (pixels, width, height).
+pub(crate) fn decode_rgba_png(bytes: &[u8]) -> Result<(Vec<u8>, u32, u32), String> {
+    let mut reader = png::Decoder::new(std::io::Cursor::new(bytes))
+        .read_info()
+        .map_err(|e| e.to_string())?;
+    let size = reader.output_buffer_size().ok_or("PNG is too large")?;
+    let mut px = vec![0u8; size];
+    let info = reader.next_frame(&mut px).map_err(|e| e.to_string())?;
+    if (info.color_type, info.bit_depth) != (png::ColorType::Rgba, png::BitDepth::Eight) {
+        return Err("PNG must be 8-bit RGBA".into());
     }
-    Icon::from_rgba(px, N as u32, N as u32).map_err(|e| e.to_string())
+    px.truncate(info.buffer_size());
+    Ok((px, info.width, info.height))
+}
+
+/// The monochrome tray glyph, recolored; only its alpha channel is used.
+fn tray_icon(rgb: [u8; 3]) -> Result<Icon, String> {
+    let (mut px, w, h) = decode_rgba_png(include_bytes!("../assets/icons/tray-icon.png"))?;
+    for p in px.chunks_exact_mut(4) {
+        p[..3].copy_from_slice(&rgb);
+    }
+    Icon::from_rgba(px, w, h).map_err(|e| e.to_string())
 }

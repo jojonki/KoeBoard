@@ -5,7 +5,8 @@ cd "$(dirname "$0")/.."
 cargo build --release
 app=dist/KoeBoard.app
 rm -rf "$app"
-mkdir -p "$app/Contents/MacOS"
+mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp assets/icons/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp target/release/koeboard "$app/Contents/MacOS/koeboard"
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -15,6 +16,7 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
   <key>CFBundleName</key><string>KoeBoard</string>
   <key>CFBundleIdentifier</key><string>dev.koeboard.dictation</string>
   <key>CFBundleExecutable</key><string>koeboard</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleShortVersionString</key><string>0.1.0</string>
   <key>CFBundleVersion</key><string>1</string>

@@ -39,8 +39,13 @@ impl Settings {
         on_message: impl Fn(String) + 'static,
     ) -> Result<Self, String> {
         let previous_app = platform::frontmost_app();
+        // Shown in the Windows title bar and taskbar; macOS ignores it.
+        let (icon, w, h) =
+            crate::app::decode_rgba_png(include_bytes!("../assets/icons/app-icon.png"))?;
+        let icon = tao::window::Icon::from_rgba(icon, w, h).map_err(|e| e.to_string())?;
         let window = WindowBuilder::new()
             .with_title("KoeBoard Settings")
+            .with_window_icon(Some(icon))
             .with_inner_size(LogicalSize::new(700.0, 540.0))
             .with_min_inner_size(LogicalSize::new(600.0, 420.0))
             .build(target)
