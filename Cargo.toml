@@ -1,0 +1,39 @@
+[package]
+name = "koeboard"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ab_glyph = "0.2.32"
+arboard = "3.7.0"
+auto-launch = "0.6.0"
+cpal = "0.18.2"
+global-hotkey = "0.9.0"
+hound = "3.5.1"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+sha2 = "0.11.1"
+tao = "0.37.2"
+toml = "1.2.1"
+tray-icon = "0.26.1"
+ureq = "3.5.1"
+wry = "0.57.1"
+
+[target.'cfg(target_os="macos")'.dependencies]
+core-foundation = "0.10.1"
+core-graphics = "0.25.0"
+foreign-types = "0.5"
+objc2 = "0.6"
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging"] }
+
+# Windows uses the prebuilt DLLs: the static libraries only link with MSVC,
+# and DLLs let the app be cross-built from macOS with MinGW.
+[target.'cfg(windows)'.dependencies.sherpa-onnx]
+version = "2.0.1"
+default-features = false
+features = ["shared"]
+
+[target.'cfg(not(windows))'.dependencies.sherpa-onnx]
+version = "2.0.1"

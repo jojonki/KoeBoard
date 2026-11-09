@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KoeBoard Settings</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #f5f5f7; --side: #ececef; --card: #ffffff; --text: #1d1d1f; --muted: #6e6e73;
+  --line: #dcdce0; --accent: #0a7cff; --active: #e0e0e5; --tint: rgba(10,124,255,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #1e1e20; --side: #18181a; --card: #2a2a2d; --text: #e8e8ed; --muted: #98989f;
+          --line: #3a3a3e; --accent: #3d9bff; --active: #2f2f33; --tint: rgba(61,155,255,.24); }
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { display: flex; background: var(--bg); color: var(--text);
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; user-select: none; -webkit-user-select: none; }
+nav { width: 160px; flex: none; background: var(--side); border-right: 1px solid var(--line);
+  padding: 16px 10px; display: flex; flex-direction: column; gap: 2px; }
+nav h1 { font-size: 13px; margin: 2px 8px 12px; font-weight: 600; }
+nav button { all: unset; padding: 6px 10px; border-radius: 6px; cursor: default; }
+nav button[hidden] { display: none; }
+nav button[aria-selected="true"] { background: var(--tint); color: var(--accent); font-weight: 600; }
+nav button:focus-visible, .seg button:focus-visible { outline: 2px solid var(--accent); }
+#status { margin-top: auto; padding: 8px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+main { flex: 1; overflow-y: auto; padding: 22px 26px 40px; min-width: 0; }
+section[hidden] { display: none; }
+h2 { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 20px 0 6px; }
+h2:first-child { margin-top: 0; }
+.group { background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 12px; min-height: 40px; }
+.row + .row { border-top: 1px solid var(--line); }
+.row small { display: block; color: var(--muted); font-size: 11px; }
+.row label, .row .name { flex: 1; min-width: 0; }
+.ctl { display: flex; align-items: center; gap: 8px; flex: none; }
+input[type=range] { width: 170px; accent-color: var(--accent); }
+.val { width: 44px; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+input[type=number], select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; font: inherit; }
+#mic { max-width: 280px; }
+input[type=text] { width: 150px; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; font: inherit; user-select: text; -webkit-user-select: text; }
+.row[hidden] { display: none; }
+input[type=number] { width: 72px; text-align: right; }
+input[type=checkbox], input[type=radio] { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+input[type=color] { width: 40px; height: 24px; padding: 0; border: 1px solid var(--line); border-radius: 4px; background: none; }
+button.btn { background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 4px 11px; font: inherit; }
+button.btn:hover { background: var(--active); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { all: unset; padding: 3px 12px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 500; }
+.key { font-variant-numeric: tabular-nums; min-width: 120px; text-align: center; }
+.key.rec { outline: 2px solid var(--accent); }
+.model { display: flex; gap: 10px; align-items: flex-start; }
+.model input { margin-top: 2px; }
+.tag { font-size: 11px; color: var(--muted); }
+#error { color: #c8453b; min-height: 16px; font-size: 12px; margin-top: 8px; }
+.stage { display: flex; justify-content: center; align-items: center; padding: 22px; background: linear-gradient(135deg, #6b7384, #3c4150); border-radius: 7px; }
+#mock { display: flex; align-items: center; justify-content: center; gap: 3px; border-radius: 999px; overflow: hidden; box-shadow: 0 3px 12px rgba(0,0,0,.35); }
+#mock i { display: block; width: 3px; border-radius: 2px; }
+.link { all: unset; color: var(--accent); text-decoration: underline; margin-right: 10px; cursor: pointer; }
+.consent { padding: 10px 12px 12px 37px; border-top: 1px solid var(--line); }
+.consent p { margin: 0 0 6px; }
+.url { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+.agree { display: flex; gap: 7px; align-items: center; margin-top: 8px; }
+button.btn:disabled { opacity: .5; }
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.themes { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.themes button { all: unset; width: 34px; height: 18px; border-radius: 9px; box-shadow: inset 0 0 0 1px rgba(127,127,127,.35); }
+.themes button:focus-visible { outline: 2px solid var(--accent); }
+.themes button[aria-pressed="true"] { outline: 2px solid var(--accent); outline-offset: 1px; }
+#setup { background: var(--tint); border-radius: 8px; padding: 12px 14px; margin-bottom: 16px; }
+#setup strong { display: block; font-size: 14px; margin-bottom: 2px; }
+#setup[hidden] { display: none; }
+</style>
+</head>
+<body>
+<nav role="tablist" aria-label="Settings">
+  <h1>KoeBoard</h1>
+  <button role="tab" data-tab="general">General</button>
+  <button role="tab" data-tab="model">Model</button>
+  <button role="tab" data-tab="layout">Layout</button>
+  <div id="status" aria-live="polite"></div>
+</nav>
+<main>
+<section id="general">
+  <h2>Shortcut</h2>
+  <div class="group">
+    <div class="row"><div class="name">Dictation shortcut<small>Click, then press the new key combination</small></div>
+      <div class="ctl"><button class="btn key" id="hotkey" type="button"></button></div></div>
+  </div>
+  <h2>Behavior</h2>
+  <div class="group">
+    <div class="row"><label for="login">Launch at login</label><div class="ctl"><input id="login" type="checkbox"></div></div>
+    <div class="row"><label for="ov">Show panel while dictating</label><div class="ctl"><input id="ov" type="checkbox" data-key="overlay"></div></div>
+    <div class="row"><label for="rc">Restore clipboard after pasting</label><div class="ctl"><input id="rc" type="checkbox" data-key="restore_clipboard"></div></div>
+  </div>
+  <h2>Recording</h2>
+  <div class="group">
+    <div class="row"><label for="mic">Microphone<small>Applies from the next recording</small></label>
+      <div class="ctl"><select id="mic" data-key="microphone"></select></div></div>
+    <div class="row"><label for="mx">Stop recording after<small>Seconds, in case the shortcut is left on</small></label>
+      <div class="ctl"><input id="mx" type="number" min="5" max="3600" data-key="max_record_seconds"></div></div>
+    <div class="row"><label for="km">Keep microphone open<small>Starts faster. Applies after restarting KoeBoard</small></label>
+      <div class="ctl"><input id="km" type="checkbox" data-key="keep_mic_open"></div></div>
+  </div>
+  <h2>Experimental</h2>
+  <div class="group">
+    <div class="row"><label for="enterMode">Press Enter after dictation<small>Sends the message in most chat apps</small></label>
+      <div class="ctl"><select id="enterMode" data-key="enter_mode">
+        <option value="off">Off</option><option value="always">Always</option><option value="keyword">When I end with a word</option>
+      </select></div></div>
+    <div class="row" id="keywordRow"><label for="enterKeyword">Ending word<small>Removed from the text and replaced by Enter</small></label>
+      <div class="ctl"><input id="enterKeyword" type="text" maxlength="40" spellcheck="false" data-key="enter_keyword"></div></div>
+  </div>
+  <h2>Advanced</h2>
+  <div class="group"><div class="row"><div class="name">Configuration file</div>
+    <div class="ctl"><button class="btn" id="openConfig" type="button">Open</button></div></div>
+    <div class="row"><div class="name">Log file<small>Microphone and timing details. Never contains dictated text</small></div>
+    <div class="ctl"><button class="btn" id="openLog" type="button">Open</button></div></div></div>
+</section>
+
+<section id="model" hidden>
+  <div id="setup" hidden><strong>Download a speech model to get started</strong>KoeBoard runs entirely on this computer, so it can't transcribe until a model is installed. Accept the license below to begin.</div>
+  <h2>Language</h2>
+  <div class="group"><div class="row"><label for="lang">Dictation language</label>
+    <div class="ctl"><select id="lang"></select></div></div></div>
+  <h2>Speech model</h2>
+  <div class="group" id="models"></div>
+  <h2>Performance</h2>
+  <div class="group">
+    <div class="row"><label for="th">CPU threads<small>0 chooses automatically</small></label>
+      <div class="ctl"><input id="th" type="number" min="0" max="32" data-key="threads"></div></div>
+    <div class="row"><label for="idle">Free memory after idle<small>Minutes. 0 keeps the model loaded</small></label>
+      <div class="ctl"><input id="idle" type="number" min="0" max="1440" data-key="idle_unload_minutes"></div></div>
+  </div>
+</section>
+
+<section id="layout" hidden>
+  <h2>Preview</h2>
+  <div class="group"><div class="stage"><div id="mock"></div></div></div>
+  <h2>Position</h2>
+  <div class="group">
+    <div class="row"><div class="name">Screen position</div><div class="ctl"><div class="seg" id="pos">
+      <button type="button" data-v="top">Top</button><button type="button" data-v="center">Center</button><button type="button" data-v="bottom">Bottom</button>
+    </div></div></div>
+    <div class="row"><label>Distance from edge</label><div class="ctl"><input type="range" min="0" max="900" step="4" data-key="panel.margin"><span class="val"></span></div></div>
+    <div class="row"><label>Horizontal offset</label><div class="ctl"><input type="range" min="-900" max="900" step="4" data-key="panel.offset_x"><span class="val"></span></div></div>
+  </div>
+  <h2>Size</h2>
+  <div class="group">
+    <div class="row"><label>Width</label><div class="ctl"><input type="range" min="60" max="600" step="2" data-key="panel.width"><span class="val"></span></div></div>
+    <div class="row"><label>Height</label><div class="ctl"><input type="range" min="16" max="80" data-key="panel.height"><span class="val"></span></div></div>
+    <div class="row"><label>Maximum text width</label><div class="ctl"><input type="range" min="100" max="1400" step="4" data-key="panel.max_text_width"><span class="val"></span></div></div>
+    <div class="row"><label>Text size</label><div class="ctl"><input type="range" min="9" max="32" data-key="panel.text_size"><span class="val"></span></div></div>
+  </div>
+  <h2>Appearance</h2>
+  <div class="group">
+    <div class="row"><label>Opacity</label><div class="ctl"><input type="range" min="0.1" max="1" step="0.01" data-key="panel.opacity"><span class="val"></span></div></div>
+    <div class="row"><label>Background</label><div class="ctl"><input type="color" data-key="panel.background"></div></div>
+    <div class="row"><div class="name">Waveform theme<small id="themeName"></small></div><div class="ctl"><div class="themes" id="themes"></div></div></div>
+    <div class="row"><label>Level gradient start</label><div class="ctl"><input type="color" data-key="panel.level_color"></div></div>
+    <div class="row"><label>Level gradient end</label><div class="ctl"><input type="color" data-key="panel.level_color_end"></div></div>
+    <div class="row"><label>Recognizing</label><div class="ctl"><input type="color" data-key="panel.busy_color"></div></div>
+    <div class="row"><label>Text</label><div class="ctl"><input type="color" data-key="panel.text_color"></div></div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="reset" type="button">Reset to defaults</button>
+    <button class="btn" id="preview" type="button">Show on screen</button>
+  </div>
+</section>
+<div id="error" role="alert"></div>
+</main>
+<script>
+const init = window.__KOEBOARD__;
+const config = init.config;
+const LANGUAGES = { ja: "Japanese" };
+const send = m => window.ipc && window.ipc.postMessage(JSON.stringify(m));
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+
+let timer;
+function save() {
+  clearTimeout(timer);
+  timer = setTimeout(() => send({ type: "save", config, launch_at_login: $("#login").checked }), 120);
+}
+const get = key => key.split(".").reduce((o, k) => o[k], config);
+function set(key, value) {
+  const parts = key.split("."), last = parts.pop();
+  parts.reduce((o, k) => o[k], config)[last] = value;
+}
+
+function readout(input) {
+  const v = input.parentElement.querySelector(".val");
+  if (!v) return;
+  v.textContent = input.dataset.key.endsWith("opacity") ? Math.round(input.value * 100) + "%" : input.value;
+}
+function render() {
+  for (const input of $$("[data-key]")) {
+    const value = get(input.dataset.key);
+    if (input.type === "checkbox") input.checked = value;
+    else input.value = input.type === "color" ? value.toLowerCase() : value;
+    readout(input);
+  }
+  for (const b of $$("#pos button")) b.setAttribute("aria-pressed", b.dataset.v === config.panel.position);
+  $("#hotkey").textContent = prettyKey(config.hotkey);
+  $("#keywordRow").hidden = config.enter_mode !== "keyword";
+  drawMock();
+}
+const THEMES = [
+  ["Aurora", "#6fe3ff", "#b69cff"],
+  ["Sunset", "#ffb36b", "#ff6fa3"],
+  ["Mint", "#7cf2c2", "#39c6f0"],
+  ["Ember", "#ffd166", "#ff5e5b"],
+  ["Sakura", "#ffd6e7", "#ff7eb6"],
+  ["Silver", "#f0f2f8", "#8a90a6"],
+];
+for (const [name, start, end] of THEMES) {
+  const b = document.createElement("button");
+  b.type = "button"; b.title = name; b.dataset.name = name;
+  b.setAttribute("aria-label", name);
+  b.style.background = `linear-gradient(90deg, ${start}, ${end})`;
+  b.addEventListener("click", () => {
+    config.panel.level_color = start;
+    config.panel.level_color_end = end;
+    render();
+    save();
+  });
+  $("#themes").append(b);
+}
+function markTheme() {
+  const p = config.panel;
+  const current = THEMES.find(([, start, end]) =>
+    start === p.level_color.toLowerCase() && end === p.level_color_end.toLowerCase());
+  for (const b of $$("#themes button")) b.setAttribute("aria-pressed", b.dataset.name === current?.[0]);
+  $("#themeName").textContent = current ? current[0] : "Custom colors";
+}
+function drawMock() {
+  markTheme();
+  const p = config.panel, mock = $("#mock");
+  mock.style.cssText = `width:${Math.min(p.width, 440)}px;height:${p.height}px;background:${p.background};opacity:${p.opacity};`;
+  const half = [1,.72,.88,.5,.66,.34,.48,.22,.3,.14,.1];
+  const heights = [...half.slice(1).reverse(), ...half];
+  const mix = (a, b, t) => "#" + [1, 3, 5].map(i => {
+    const x = parseInt(a.substr(i, 2), 16), y = parseInt(b.substr(i, 2), 16);
+    return Math.round(x + (y - x) * t).toString(16).padStart(2, "0");
+  }).join("");
+  mock.innerHTML = heights.map((h, i) =>
+    `<i style="height:${Math.max(3, (p.height - 14) * h)}px;background:${mix(p.level_color, p.level_color_end, i / (heights.length - 1))}"></i>`).join("");
+}
+function coerce(input) {
+  if (input.type === "checkbox") return input.checked;
+  if (input.type === "number" || input.type === "range") {
+    const n = Number(input.value);
+    if (!Number.isFinite(n)) return null;
+    const integer = ["max_record_seconds", "threads", "idle_unload_minutes"].includes(input.dataset.key);
+    return integer ? Math.max(0, Math.round(n)) : n;
+  }
+  return input.value;
+}
+for (const input of $$("[data-key]")) {
+  input.addEventListener("input", () => {
+    const value = coerce(input);
+    if (value === null) return;
+    set(input.dataset.key, value);
+    readout(input);
+    if (input.dataset.key.startsWith("panel.")) drawMock();
+    if (input.dataset.key === "enter_mode") $("#keywordRow").hidden = value !== "keyword";
+    save();
+  });
+}
+
+function selectTab(name) {
+  for (const b of $$("nav button")) b.setAttribute("aria-selected", b.dataset.tab === name);
+  for (const s of $$("main section")) s.hidden = s.id !== name;
+}
+for (const b of $$("nav button")) b.addEventListener("click", () => selectTab(b.dataset.tab));
+
+for (const b of $$("#pos button")) b.addEventListener("click", () => {
+  config.panel.position = b.dataset.v;
+  render();
+  save();
+});
+
+const NAMES = { control: "Ctrl", shift: "Shift", alt: "Alt", super: "Cmd" };
+function prettyKey(text) {
+  return text.split("+").map(p => NAMES[p] || p.replace(/^Key|^Digit/, "")).join(" + ");
+}
+function captureHotkey() {
+  const button = $("#hotkey");
+  button.classList.add("rec");
+  button.textContent = "Press keys…";
+  const onKey = e => {
+    e.preventDefault();
+    if (e.key === "Escape") return finish();
+    if (["Control", "Shift", "Alt", "Meta"].includes(e.key)) return;
+    const mods = [e.ctrlKey && "control", e.shiftKey && "shift", e.altKey && "alt", e.metaKey && "super"].filter(Boolean);
+    if (!mods.length && !/^F\d+$/.test(e.code)) {
+      $("#error").textContent = "Use at least one modifier key.";
+      return;
+    }
+    $("#error").textContent = "";
+    config.hotkey = [...mods, e.code].join("+");
+    finish();
+    save();
+  };
+  function finish() {
+    window.removeEventListener("keydown", onKey, true);
+    button.classList.remove("rec");
+    button.textContent = prettyKey(config.hotkey);
+  }
+  window.addEventListener("keydown", onKey, true);
+}
+$("#hotkey").addEventListener("click", captureHotkey);
+
+let downloading = null;
+let consentFor = null;
+let confirmDelete = null;
+let downloadPercent = "";
+const modelMissing = () => !init.models.find(m => m.id === config.model)?.installed;
+function renderSetup() {
+  const setup = !init.models.some(m => m.installed);
+  $("#setup").hidden = !setup;
+  for (const b of $$("nav button")) b.hidden = setup && b.dataset.tab !== "model";
+}
+function link(text, url) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "link"; b.textContent = text; b.title = url;
+  b.addEventListener("click", e => { e.preventDefault(); send({ type: "open_url", url }); });
+  return b;
+}
+function button(text, onClick, disabled) {
+  const b = document.createElement("button");
+  b.type = "button"; b.className = "btn"; b.textContent = text; b.disabled = !!disabled;
+  b.addEventListener("click", e => { e.preventDefault(); onClick(); });
+  return b;
+}
+function consentBox(m) {
+  const box = document.createElement("div");
+  box.className = "consent";
+  const intro = document.createElement("p");
+  intro.textContent = `Review the ${m.license} license before downloading ${m.sizeMb} MB from Hugging Face.`;
+  const urls = document.createElement("p");
+  urls.append(link("Open license", m.licenseUrl), link("Open model page", m.modelUrl));
+  const address = document.createElement("p");
+  address.className = "url"; address.textContent = m.licenseUrl;
+  const note = document.createElement("p");
+  note.className = "tag"; note.textContent = m.licenseNote;
+  const agree = document.createElement("label");
+  agree.className = "agree";
+  const check = document.createElement("input");
+  check.type = "checkbox";
+  agree.append(check, " I have reviewed and accept this license");
+  const start = button("Download", () => {
+    downloading = m.id; consentFor = null;
+    send({ type: "download", id: m.id, accepted: true });
+    renderModels();
+  }, true);
+  check.addEventListener("change", () => { start.disabled = !check.checked; });
+  const cancel = button("Cancel", () => { consentFor = null; renderModels(); });
+  const actions = document.createElement("div");
+  actions.className = "actions";
+  actions.append(cancel, start);
+  box.append(intro, urls, address, note, agree, actions);
+  return box;
+}
+function renderModels() {
+  renderSetup();
+  const language = $("#lang").value;
+  const box = $("#models");
+  box.textContent = "";
+  for (const m of init.models.filter(m => m.language === language)) {
+    const row = document.createElement("div");
+    row.className = "row model";
+    const radio = document.createElement("input");
+    radio.type = "radio"; radio.name = "model"; radio.id = "m-" + m.id;
+    radio.disabled = !m.installed;
+    radio.checked = m.installed && m.id === config.model;
+    radio.addEventListener("change", () => { config.model = m.id; save(); });
+    const text = document.createElement("label");
+    text.className = "name"; text.htmlFor = radio.id; text.textContent = m.label;
+    const tag = document.createElement("small");
+    tag.append(`${m.license} · ${m.sizeMb} MB · `);
+    tag.append(m.installed ? "Downloaded" : downloading === m.id ? `Downloading… ${downloadPercent}` : "Not downloaded");
+    text.append(tag);
+    const ctl = document.createElement("div");
+    ctl.className = "ctl";
+    ctl.append(link("License", m.licenseUrl));
+    if (m.installed) {
+      if (confirmDelete === m.id) {
+        ctl.append(button("Cancel", () => { confirmDelete = null; renderModels(); }),
+          button("Confirm delete", () => { confirmDelete = null; send({ type: "delete", id: m.id }); }));
+      } else {
+        ctl.append(button("Delete", () => { confirmDelete = m.id; renderModels(); }));
+      }
+    } else {
+      ctl.append(button("Download…", () => { consentFor = m.id; renderModels(); }, downloading));
+    }
+    row.append(radio, text, ctl);
+    box.append(row);
+    if (consentFor === m.id) box.append(consentBox(m));
+  }
+}
+window.koeboardModelEvent = e => {
+  const m = init.models.find(x => x.id === e.id);
+  if (!m) return;
+  if (e.kind === "installed") { m.installed = true; downloading = null; if (e.selected) config.model = e.id; }
+  if (e.kind === "failed") { downloading = null; consentFor = e.id; }
+  if (e.kind === "removed") m.installed = false;
+  renderModels();
+};
+for (const code of [...new Set(init.models.map(m => m.language))]) {
+  const o = document.createElement("option");
+  o.value = code; o.textContent = LANGUAGES[code] || code;
+  $("#lang").append(o);
+}
+$("#lang").value = init.models.find(m => m.id === config.model)?.language || "ja";
+$("#lang").addEventListener("change", renderModels);
+
+function addMicrophone(id, name) {
+  const o = document.createElement("option");
+  o.value = id; o.textContent = name;
+  $("#mic").append(o);
+}
+addMicrophone("", "System default");
+for (const m of init.microphones) addMicrophone(m.id, m.name);
+if (!init.microphones.some(m => m.id === config.microphone) && config.microphone) {
+  addMicrophone(config.microphone, "Unavailable device");
+}
+
+$("#login").checked = !!init.launchAtLogin;
+$("#login").disabled = init.launchAtLogin === null;
+$("#login").addEventListener("change", save);
+$("#openConfig").addEventListener("click", () => send({ type: "open_config" }));
+$("#openLog").addEventListener("click", () => send({ type: "open_log" }));
+$("#preview").addEventListener("click", () => send({ type: "preview" }));
+$("#reset").addEventListener("click", () => {
+  config.panel = JSON.parse(JSON.stringify(init.panelDefaults));
+  render();
+  save();
+});
+
+window.koeboardStatus = text => {
+  $("#status").textContent = text;
+  const percent = downloading && /(\d+)%/.exec(text)?.[0];
+  if (percent && percent !== downloadPercent) { downloadPercent = percent; renderModels(); }
+};
+window.koeboardRequireModel = () => {
+  if (!modelMissing()) return;
+  selectTab("model");
+  if (!downloading && !consentFor && !init.models.some(m => m.installed)) { consentFor = config.model; renderModels(); }
+};
+window.koeboardError = text => { $("#error").textContent = text; };
+
+window.koeboardStatus(init.status);
+selectTab("general");
+renderModels();
+render();
+window.koeboardRequireModel();
+</script>
+</body>
+</html>
