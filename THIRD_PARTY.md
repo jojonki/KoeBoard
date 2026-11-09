@@ -9,7 +9,7 @@ KoeBoard はモデルを同梱しません。設定画面でユーザーが選�
 | Haas-ja-v1.0(量子化 ONNX、既定) | Apache-2.0 | [oboroge0/Haas-ja-v1.0-onnx-quantized](https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized) | 原著は Third Intelligence。ONNX 版は非公式変換。詳細は[下記](#haas-ja-v10-のライセンス)を参照してください |
 | reazonspeech-k2-v2(int8、軽量) | Apache-2.0 | [reazon-research/reazonspeech-k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2) | リポジトリに LICENSE ファイルはなく、モデルカードの表記に基づきます |
 
-モデルの重みのライセンスと、学習データ(ReazonSpeech、Common Voice、YODAS など)の利用条件は別の話です。商用利用では学習データの条件も確認してください。
+モデルの重みのライセンスと、学習データ(ReazonSpeech、Common Voice、YODAS など)の利用条件は別の話です。商用利用では学習データの条件も確認してください。たとえば ReazonSpeech コーパスは CDLA-Sharing-1.0 で、利用目的は著作権法第 30 条の 4 に定める情報解析に限られています。
 
 ### Haas-ja-v1.0 のライセンス
 
@@ -43,6 +43,8 @@ This conversion is unofficial and is not endorsed by Third Intelligence.
 
 ## 主なランタイム依存
 
+配布物に含む依存すべてのライセンス文は、macOS 版は `KoeBoard.app/Contents/Resources/THIRD_PARTY_LICENSES.txt`、Windows 版は `THIRD_PARTY_LICENSES.txt` にあります。
+
 | 依存 | ライセンス |
 |---|---|
 | sherpa-onnx | Apache-2.0 |
@@ -50,7 +52,6 @@ This conversion is unofficial and is not endorsed by Third Intelligence.
 | cpal | Apache-2.0 |
 | global-hotkey / tray-icon / tao | Apache-2.0 または MIT |
 | arboard | Apache-2.0 または MIT |
-
 | Noto Sans JP(Windows 版に同梱、`assets/fonts/OFL.txt`) | SIL Open Font License 1.1 |
 | WebView2Loader(Windows 版に同梱) | Microsoft WebView2 SDK のライセンス(再配布可) |
 | MinGW-w64 / GCC ランタイム(Windows 版にリンク) | ZPL ほか、GCC Runtime Library Exception |

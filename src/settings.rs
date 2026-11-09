@@ -73,6 +73,8 @@ impl Settings {
                     "license": m.license,
                     "licenseUrl": m.license_url,
                     "modelUrl": m.model_url,
+                    "originalUrl": m.original_url,
+                    "repo": m.repo,
                     "licenseNote": m.license_note,
                     "sizeMb": models::download_size(m) / 1_000_000,
                     "installed": models::is_installed(&models::model_dir(root, m), m),

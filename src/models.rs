@@ -21,7 +21,10 @@ pub struct ModelSpec {
     pub license: &'static str,
     /// The license text, shown before anything is downloaded.
     pub license_url: &'static str,
+    /// The page of `repo`, the weights actually downloaded.
     pub model_url: &'static str,
+    /// The authors' own model, when `repo` is someone else's conversion of it.
+    pub original_url: Option<&'static str>,
     /// Anything the user should know before accepting.
     pub license_note: &'static str,
     pub repo: &'static str,
@@ -43,11 +46,12 @@ pub const DEFAULT_MODEL: &str = "haas-ja-v1.0-q";
 pub const CATALOG: &[ModelSpec] = &[
     ModelSpec {
         id: "haas-ja-v1.0-q",
-        label: "Haas-ja v1.0 · Most accurate, with punctuation",
+        label: "Haas-ja v1.0 (unofficial ONNX conversion) · Most accurate, with punctuation",
         language: "ja",
         license: "Apache-2.0",
         license_url: "https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized/blob/7f5ab0a4b1bf39db78afd6691eeecbc4f9d42e39/LICENSE",
-        model_url: "https://huggingface.co/third-intelligence/Haas-ja-v1.0",
+        model_url: "https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized",
+        original_url: Some("https://huggingface.co/third-intelligence/Haas-ja-v1.0"),
         license_note: "Unofficial ONNX conversion of Third Intelligence's Haas-ja-v1.0. Training data has its own terms; check them for commercial use.",
         repo: "oboroge0/Haas-ja-v1.0-onnx-quantized",
         revision: "7f5ab0a4b1bf39db78afd6691eeecbc4f9d42e39",
@@ -75,6 +79,7 @@ pub const CATALOG: &[ModelSpec] = &[
         license: "Apache-2.0",
         license_url: "https://www.apache.org/licenses/LICENSE-2.0",
         model_url: "https://huggingface.co/reazon-research/reazonspeech-k2-v2",
+        original_url: None,
         license_note: "License stated on the model card. Training data has its own terms; check them for commercial use.",
         repo: "reazon-research/reazonspeech-k2-v2",
         revision: "291488c8151be24d7da4bf7af26e533fad96e407",
@@ -103,7 +108,9 @@ pub fn model_dir(root: &Path, spec: &ModelSpec) -> PathBuf {
 }
 
 pub fn allows_url(url: &str) -> bool {
-    CATALOG.iter().any(|m| m.license_url == url || m.model_url == url)
+    CATALOG
+        .iter()
+        .any(|m| m.license_url == url || m.model_url == url || m.original_url == Some(url))
 }
 
 pub fn download_size(spec: &ModelSpec) -> u64 {
@@ -217,6 +224,11 @@ mod tests {
             assert!(m.license_url.starts_with("https://"), "{} needs a license URL", m.id);
             assert!(m.model_url.starts_with("https://"), "{} needs a model URL", m.id);
             assert!(allows_url(m.license_url));
+            assert_eq!(m.model_url, format!("https://huggingface.co/{}", m.repo), "{} must link what it downloads", m.id);
+            if let Some(original) = m.original_url {
+                assert!(allows_url(original));
+                assert!(m.label.contains("unofficial"), "{} must say it is a conversion", m.id);
+            }
             for required in [m.encoder, m.decoder, m.joiner, m.tokens] {
                 assert!(m.files.iter().any(|f| f.name == required), "{required} missing");
             }

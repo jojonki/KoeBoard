@@ -9,6 +9,8 @@ rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
 cp assets/icons/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp target/release/koeboard "$app/Contents/MacOS/koeboard"
+/usr/bin/python3 -I scripts/generate-licenses.py "$(rustc -vV | sed -n 's/^host: //p')" \
+  "$app/Contents/Resources/THIRD_PARTY_LICENSES.txt"
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

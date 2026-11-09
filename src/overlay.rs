@@ -33,9 +33,13 @@ const COMFORTABLE_SHORT_SIDE: f64 = 1440.0;
 const ENTER_SLOT: f32 = 20.0;
 const ENTER_MARK_RIGHT: f32 = 22.0;
 const ENTER_MARK_SECONDS: f32 = 0.7;
+/// The fewest waveform columns; wider panels get more instead of sparser ones.
 const BARS: usize = 21;
+const MAX_BARS: usize = 400;
+/// Column spacing, in logical pixels, once the panel is wide enough for `BARS`.
+const BAR_PITCH: f32 = 7.0;
 /// One extra column is partly off the edge while the waveform scrolls.
-const HISTORY: usize = BARS + 1;
+const HISTORY: usize = MAX_BARS + 1;
 
 /// Time constants, in seconds, of the eased transitions.
 const FADE_IN: f32 = 0.055;
@@ -156,6 +160,22 @@ pub struct Overlay {
     next_frame: Instant,
     last_tick: Instant,
     started: Instant,
+}
+
+/// Columns that fill a panel of the configured width.
+fn bar_count(panel_width: f64) -> usize {
+    let room = panel_width as f32 - 2.0 * SIDE_MARGIN;
+    ((room / BAR_PITCH) as usize).clamp(BARS, MAX_BARS)
+}
+
+fn text_block_height(lines: usize, text_size: f32) -> f64 {
+    (lines as f32 * text_size * LINE_HEIGHT + 2.0 * TEXT_V_MARGIN) as f64
+}
+
+/// Height of the panel in every state except multi-line text, so that switching
+/// between the waveform and one line of text does not resize it.
+fn base_height(style: &PanelStyle) -> f64 {
+    style.height.max(text_block_height(1, style.text_size))
 }
 
 impl Overlay {
@@ -316,12 +336,12 @@ impl Overlay {
         self.enter_at = None;
         self.levels.iter_mut().for_each(|l| *l = 0.0);
         self.scroll = 0.0;
-        let (width, height) = (self.style.width, self.style.height);
+        let (width, height) = (self.style.width, base_height(&self.style));
         self.show(View::Listening, width, height);
     }
 
     pub fn recognizing(&mut self) {
-        let (width, height) = (self.style.width, self.style.height);
+        let (width, height) = (self.style.width, base_height(&self.style));
         self.show(View::Recognizing, width, height);
     }
 
@@ -356,7 +376,7 @@ impl Overlay {
                 self.lines.clear();
                 self.enter_slot = 0.0;
                 self.result_until = now + mark;
-                let (width, height) = (self.style.width, self.style.height);
+                let (width, height) = (self.style.width, base_height(&self.style));
                 self.show(View::Result(String::new()), width, height);
             }
             View::Hidden | View::Listening => return,
@@ -375,7 +395,7 @@ impl Overlay {
     fn layout_text(&mut self, text: &str) -> (f64, f64) {
         let Some(font) = &self.font else {
             self.lines.clear();
-            return (self.style.width, self.style.height);
+            return (self.style.width, base_height(&self.style));
         };
         let size = self.style.text_size;
         let scaled = font.as_scaled(PxScale::from(size));
@@ -400,9 +420,9 @@ impl Overlay {
             .map(|l| l.chars().map(advance).sum::<f32>())
             .fold(0.0, f32::max);
         let width = ((widest + 2.0 * SIDE_MARGIN + self.enter_slot) as f64 + 2.0).clamp(self.style.width, self.style.max_text_width);
-        let height = (lines.len() as f32 * line_height + 2.0 * TEXT_V_MARGIN) as f64;
+        let height = text_block_height(lines.len(), size);
         self.lines = lines;
-        (width, height.max(self.style.height))
+        (width, height.max(base_height(&self.style)))
     }
 
     fn hide(&mut self) {
@@ -488,10 +508,11 @@ impl Overlay {
         let levels: Vec<f32> = self.levels.iter().copied().collect();
         let frame = Frame {
             scroll: self.scroll,
+            bars: bar_count(self.style.width),
             scale,
             pill_width: self.pill_width * scale,
             pill_height: self.pill_height * scale,
-            corner: self.style.height as f32 * scale / 2.0,
+            corner: base_height(&self.style) as f32 * scale / 2.0,
             anchor: match self.style.position.as_str() {
                 "top" => Anchor::Top,
                 "center" => Anchor::Center,
@@ -745,6 +766,7 @@ enum Anchor {
 }
 
 struct Frame<'a> {
+    bars: usize,
     /// Fraction of a bar the waveform has moved toward the left.
     scroll: f32,
     scale: f32,
@@ -841,9 +863,9 @@ fn paint(buf: &mut [u32], w: usize, h: usize, font: Option<&FontVec>, f: &Frame)
     let (start, end) = (channels(f.colors.level), channels(f.colors.level_end));
     let busy_color = channels(f.colors.busy);
 
-    let count = BARS as f32;
+    let count = f.bars as f32;
     let area = (f.pill_width - 2.0 * SIDE_MARGIN * f.scale).max(1.0);
-    let pitch = (area / count).clamp(3.0 * f.scale, 7.0 * f.scale);
+    let pitch = (area / count).clamp(3.0 * f.scale, BAR_PITCH * f.scale);
     let bar_half = pitch * 0.27;
     let left = -pitch * (count - 1.0) / 2.0;
     let max_half = (half_h - 5.0 * f.scale).max(bar_half);
@@ -1007,9 +1029,34 @@ fn draw_text(
 mod tests {
     use super::*;
 
+    #[test]
+    fn waveform_grows_with_the_panel_width() {
+        assert_eq!(bar_count(PanelStyle::default().width), BARS);
+        assert_eq!(bar_count(60.0), BARS);
+        let wide = 600.0;
+        let span = (bar_count(wide) - 1) as f32 * BAR_PITCH;
+        let room = wide as f32 - 2.0 * SIDE_MARGIN;
+        assert!(span <= room && span > room - 2.0 * BAR_PITCH);
+        assert!(bar_count(100_000.0) < HISTORY);
+    }
+
+    #[test]
+    fn waveform_and_one_line_of_text_share_a_height() {
+        for text_size in [9.0, 13.0, 24.0, 48.0] {
+            let style = PanelStyle { text_size, ..PanelStyle::default() };
+            let waveform = base_height(&style);
+            let text = text_block_height(1, text_size).max(base_height(&style));
+            assert_eq!(waveform, text);
+            assert!(waveform >= style.height);
+        }
+        let tall = PanelStyle { height: 80.0, ..PanelStyle::default() };
+        assert_eq!(base_height(&tall), 80.0);
+    }
+
     fn frame<'a>(levels: &'a [f32], lines: &'a [String], mix: f32, busy: bool) -> Frame<'a> {
         Frame {
             scroll: 0.0,
+            bars: BARS,
             scale: 2.0,
             pill_width: 296.0,
             pill_height: 72.0,

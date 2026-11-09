@@ -138,6 +138,7 @@ button.btn:disabled { opacity: .5; }
   <div class="group"><div class="row"><label for="lang">Dictation language</label>
     <div class="ctl"><select id="lang"></select></div></div></div>
   <h2>Speech model</h2>
+  <p class="tag">Each model has its own license and terms. Check them using the Model and License links before downloading.</p>
   <div class="group" id="models"></div>
   <h2>Performance</h2>
   <div class="group">
@@ -269,15 +270,19 @@ function markTheme() {
 function drawMock() {
   markTheme();
   const p = config.panel, mock = $("#mock");
-  mock.style.cssText = `width:${Math.min(p.width, 440)}px;height:${p.height}px;background:${p.background};opacity:${p.opacity};`;
+  // Matches base_height in overlay.rs.
+  const height = Math.max(p.height, p.text_size * 1.45 + 18);
+  mock.style.cssText = `width:${Math.min(p.width, 440)}px;height:${height}px;background:${p.background};opacity:${p.opacity};`;
   const half = [1,.72,.88,.5,.66,.34,.48,.22,.3,.14,.1];
-  const heights = [...half.slice(1).reverse(), ...half];
+  // More columns on a wider panel, as in bar_count in overlay.rs.
+  const columns = Math.max(21, Math.floor((Math.min(p.width, 440) - 32) / 6)) | 1;
+  const heights = Array.from({ length: columns }, (_, i) => half[Math.abs(i - (columns - 1) / 2) % half.length]);
   const mix = (a, b, t) => "#" + [1, 3, 5].map(i => {
     const x = parseInt(a.substr(i, 2), 16), y = parseInt(b.substr(i, 2), 16);
     return Math.round(x + (y - x) * t).toString(16).padStart(2, "0");
   }).join("");
   mock.innerHTML = heights.map((h, i) =>
-    `<i style="height:${Math.max(3, (p.height - 14) * h)}px;background:${mix(p.level_color, p.level_color_end, i / (heights.length - 1))}"></i>`).join("");
+    `<i style="height:${Math.max(3, (height - 14) * h)}px;background:${mix(p.level_color, p.level_color_end, i / (heights.length - 1))}"></i>`).join("");
 }
 function coerce(input) {
   if (input.type === "checkbox") return input.checked;
@@ -371,9 +376,10 @@ function consentBox(m) {
   const box = document.createElement("div");
   box.className = "consent";
   const intro = document.createElement("p");
-  intro.textContent = `Review the ${m.license} license before downloading ${m.sizeMb} MB from Hugging Face.`;
+  intro.textContent = `Review the ${m.license} license before downloading ${m.sizeMb} MB of ${m.repo} from Hugging Face.`;
   const urls = document.createElement("p");
   urls.append(link("Open license", m.licenseUrl), link("Open model page", m.modelUrl));
+  if (m.originalUrl) urls.append(link("Open original model", m.originalUrl));
   const address = document.createElement("p");
   address.className = "url"; address.textContent = m.licenseUrl;
   const note = document.createElement("p");
@@ -414,10 +420,12 @@ function renderModels() {
     const tag = document.createElement("small");
     tag.append(`${m.license} · ${m.sizeMb} MB · `);
     tag.append(m.installed ? "Downloaded" : downloading === m.id ? `Downloading… ${downloadPercent}` : "Not downloaded");
-    text.append(tag);
+    const source = document.createElement("small");
+    source.textContent = `Hugging Face: ${m.repo}`;
+    text.append(tag, source);
     const ctl = document.createElement("div");
     ctl.className = "ctl";
-    ctl.append(link("License", m.licenseUrl));
+    ctl.append(link("Model", m.modelUrl), link("License", m.licenseUrl));
     if (m.installed) {
       if (confirmDelete === m.id) {
         ctl.append(button("Cancel", () => { confirmDelete = null; renderModels(); }),
