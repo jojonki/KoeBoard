@@ -166,3 +166,7 @@ Windows でマイクを開けない場合は、設定 → プライバシーと�
 ## 言語の追加
 
 `src/models.rs` の `CATALOG` に `ModelSpec` を 1 件追加すると、メニューに表示されます。ライセンスは重みの原本で確認してください。
+
+---
+
+<sub>KoeBoard は [Handy](https://github.com/cjpais/Handy) にインスパイアされて作りました。</sub>

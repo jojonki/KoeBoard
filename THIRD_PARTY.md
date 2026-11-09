@@ -6,17 +6,40 @@ KoeBoard はモデルを同梱しません。設定画面でユーザーが選�
 
 | モデル | ライセンス | 取得元 | 注意 |
 |---|---|---|---|
-| Haas-ja-v1.0(量子化 ONNX、既定) | Apache-2.0 | [oboroge0/Haas-ja-v1.0-onnx-quantized](https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized) | 原著は [Third Intelligence](https://huggingface.co/third-intelligence/Haas-ja-v1.0)。ONNX 版は非公式変換。`LICENSE` と `NOTICE` も一緒に取得します |
+| Haas-ja-v1.0(量子化 ONNX、既定) | Apache-2.0 | [oboroge0/Haas-ja-v1.0-onnx-quantized](https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized) | 原著は Third Intelligence。ONNX 版は非公式変換。詳細は[下記](#haas-ja-v10-のライセンス)を参照してください |
 | reazonspeech-k2-v2(int8、軽量) | Apache-2.0 | [reazon-research/reazonspeech-k2-v2](https://huggingface.co/reazon-research/reazonspeech-k2-v2) | リポジトリに LICENSE ファイルはなく、モデルカードの表記に基づきます |
 
-モデルを同梱して再配布する場合は、Apache-2.0 の条文と `NOTICE` を一緒に配布し、変更点を明示してください。
-モデルの重みのライセンスと、学習データ(ReazonSpeech、YODAS など)の利用条件は別の話です。商用利用では学習データの条件も確認してください。
+モデルの重みのライセンスと、学習データ(ReazonSpeech、Common Voice、YODAS など)の利用条件は別の話です。商用利用では学習データの条件も確認してください。
 
-## 採用しなかったモデル
+### Haas-ja-v1.0 のライセンス
 
-| モデル | 理由 |
-|---|---|
-| SenseVoice Small | コードは MIT ですが、重みは [FunASR Model License v1.1](https://github.com/modelscope/FunASR/blob/main/MODEL_LICENSE) です。批判的発言での権利喪失(4.2)、提供元による一方的な改定(6)、準拠法が未記入(7)という条項があります。Apache-2.0 と表記するミラーもありますが、原本の条件が優先されます |
+| | 原著 | KoeBoard が取得する ONNX 変換版 |
+|---|---|---|
+| モデル | [Haas-ja-v1.0](https://huggingface.co/third-intelligence/Haas-ja-v1.0) | [Haas-ja-v1.0-onnx-quantized](https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized) |
+| 提供者 | Third Intelligence, Inc. | oboroge0(非公式変換。Third Intelligence の公認ではありません) |
+| ライセンス | [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)(重みと推論コード。第三者のコンポーネントはそれぞれのライセンスに従います) | [Apache License 2.0](https://huggingface.co/oboroge0/Haas-ja-v1.0-onnx-quantized/blob/7f5ab0a4b1bf39db78afd6691eeecbc4f9d42e39/LICENSE) |
+| ライセンスの根拠 | モデルカードの表記 | リポジトリの `LICENSE` と `NOTICE` |
+
+ONNX 変換版の `LICENSE` と `NOTICE` は、モデルと一緒にモデルのフォルダーへ取得します。`NOTICE` の全文は次のとおりです。
+
+```text
+Haas-ja-v1.0-onnx-quantized
+
+This is a modified version of Haas-ja-v1.0 by Third Intelligence
+(https://huggingface.co/third-intelligence/Haas-ja-v1.0),
+revision 660728d39019e5e065046154beca44ac9a66a540, licensed under the Apache License 2.0.
+
+Changes from the original:
+- Converted the weights from NeMo format to ONNX for use with sherpa-onnx.
+- Quantized the encoder (pointwise convolutions to int8, MatMul weights to 4-bit).
+- Flattened the prediction network's state into two tensors, and added the ONNX
+  metadata sherpa-onnx expects.
+
+conversion/fla_cpu_shim.py reimplements decode-time kernels of flash-linear-attention
+(https://github.com/fla-org/flash-linear-attention, MIT License) in pure PyTorch.
+
+This conversion is unofficial and is not endorsed by Third Intelligence.
+```
 
 新しいモデルを `src/models.rs` に追加するときは、変換版の表記ではなく、重みの原本のライセンスを確認してください。
 
