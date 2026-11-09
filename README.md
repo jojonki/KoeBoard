@@ -26,29 +26,9 @@
 
 音声認識を含む入力の処理はすべて端末内で完結し、クラウドの音声認識 API やサーバーは使いません。インターネットに接続するのは、モデルのダウンロードとアプリの更新のときだけです。どちらも取得のみで、音声や認識結果は送信しません。
 
-```mermaid
-flowchart TB
-    subgraph device["端末内 (macOS / Windows)"]
-        direction LR
-        hotkey["ホットキー<br/>global-hotkey"] -->|"押す / 離す"| audio["録音<br/>cpal"]
-        audio -->|音声データ| engine["音声認識<br/>sherpa-onnx (CPU)"]
-        engine -->|テキスト| inject["貼り付け<br/>クリップボード + 貼り付けキー"]
-        inject --> target["フォーカス中の<br/>テキスト欄"]
-        models[("音声認識モデル<br/>ONNX")] --> engine
-        audio -.->|入力レベル| overlay["パネル<br/>波形・認識結果"]
-        engine -.->|認識結果| overlay
-        updater["アップデーター"]
-    end
-
-    subgraph internet["インターネット (取得のみ・音声は送信しない)"]
-        direction LR
-        hf["Hugging Face<br/>モデルの配布元"]
-        github["GitHub Releases<br/>アプリの配布元"]
-    end
-
-    hf -->|"ライセンス確認後にダウンロード<br/>SHA-256 で検証"| models
-    github -->|"更新の確認 (1 日 1 回)<br/>新版のダウンロード"| updater
-```
+<p align="center">
+  <img src="docs/architecture.svg" alt="KoeBoard のアーキテクチャ図。入力の処理は端末内で完結し、インターネットからはモデルとアプリの更新を取得するだけ" width="800">
+</p>
 
 | モジュール | 役割 |
 |---|---|

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 292" width="880" height="292" role="img" aria-label="KoeBoard のアーキテクチャ。ホットキー、録音、音声認識、貼り付け、テキスト欄の順に端末内で処理し、インターネットからはモデルとアプリの更新の取得のみを行う">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#6B7280"/>
+    </marker>
+    <style>
+      text { font-family: "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif; }
+      .title { font-size: 14px; font-weight: 600; fill: #1F2937; }
+      .note { font-size: 13px; fill: #4B5563; }
+      .name { font-size: 14px; font-weight: 600; fill: #1F2937; text-anchor: middle; }
+      .sub { font-size: 11.5px; fill: #6B7280; text-anchor: middle; }
+      .node { fill: #FFFFFF; stroke: #94A3B8; stroke-width: 1.2; }
+      .main { fill: #E4ECFD; stroke: #3B6FE0; stroke-width: 1.6; }
+      .edge { stroke: #6B7280; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect width="880" height="292" rx="12" fill="#FFFFFF"/>
+
+  <rect x="10" y="10" width="860" height="176" rx="10" fill="#F1F5F9" stroke="#CBD5E1"/>
+  <text class="title" x="30" y="34">端末内 (macOS / Windows)</text>
+
+  <rect x="10" y="202" width="860" height="80" rx="10" fill="#FEF7E6" stroke="#EBD79A"/>
+  <text class="title" x="30" y="236">インターネット</text>
+  <text class="note" x="30" y="258">取得のみ。音声と認識結果は送信しません</text>
+
+  <rect class="node" x="30" y="48" width="130" height="52" rx="8"/>
+  <text class="name" x="95" y="71">ホットキー</text>
+  <text class="sub" x="95" y="89">押す / 離す</text>
+
+  <rect class="node" x="200" y="48" width="130" height="52" rx="8"/>
+  <text class="name" x="265" y="71">録音</text>
+  <text class="sub" x="265" y="89">cpal</text>
+
+  <rect class="main" x="370" y="48" width="130" height="52" rx="8"/>
+  <text class="name" x="435" y="71">音声認識</text>
+  <text class="sub" x="435" y="89">sherpa-onnx (CPU)</text>
+
+  <rect class="node" x="540" y="48" width="130" height="52" rx="8"/>
+  <text class="name" x="605" y="71">貼り付け</text>
+  <text class="sub" x="605" y="89">クリップボード経由</text>
+
+  <rect class="node" x="710" y="48" width="130" height="52" rx="8"/>
+  <text class="name" x="775" y="71">テキスト欄</text>
+  <text class="sub" x="775" y="89">フォーカス中のアプリ</text>
+
+  <path class="edge" d="M160 74 H199"/>
+  <path class="edge" d="M330 74 H369"/>
+  <path class="edge" d="M500 74 H539"/>
+  <path class="edge" d="M670 74 H709"/>
+
+  <text class="note" x="30" y="150">音声認識は端末内で完結し、</text>
+  <text class="note" x="30" y="169">クラウドの API やサーバーは使いません</text>
+
+  <rect class="node" x="370" y="122" width="130" height="52" rx="8"/>
+  <text class="name" x="435" y="145">音声認識モデル</text>
+  <text class="sub" x="435" y="163">ONNX</text>
+
+  <rect class="node" x="540" y="122" width="130" height="52" rx="8"/>
+  <text class="name" x="605" y="145">アップデーター</text>
+  <text class="sub" x="605" y="163">1 日 1 回確認</text>
+
+  <path class="edge" d="M435 122 V101"/>
+
+  <rect class="node" x="370" y="218" width="130" height="52" rx="8"/>
+  <text class="name" x="435" y="241">Hugging Face</text>
+  <text class="sub" x="435" y="259">モデルの取得</text>
+
+  <rect class="node" x="540" y="218" width="130" height="52" rx="8"/>
+  <text class="name" x="605" y="241">GitHub Releases</text>
+  <text class="sub" x="605" y="259">アプリの更新</text>
+
+  <path class="edge" d="M435 218 V175"/>
+  <path class="edge" d="M605 218 V175"/>
+</svg>
